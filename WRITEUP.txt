@@ -1,0 +1,62 @@
+NOTES:
+- Spellcheck contains the application for spellchecking and correcting inputs.
+- SpellcheckGenerator contains the application that generates misspelled words and outputs a .txt file of them in Spellcheck's folder for piping.
+- Dictionary file included is US.dic, found in Spellcheck\Spellcheck\bin\Debug
+
+ORIGINAL PROBLEM:
+Write a program that reads a large list of English words (e.g. from /usr/share/dict/words on a unix system) into memory, and then reads words from stdin, and prints either the best spelling suggestion, or "NO SUGGESTION" if no suggestion can be found. The program should print ">" as a prompt before reading each word, and should loop until killed.
+
+Your solution should be faster than O(n) per word checked, where n is the length of the dictionary. That is to say, you can't scan the dictionary every time you want to spellcheck a word.
+
+For example:
+
+> sheeeeep
+sheep
+> peepple
+people
+> sheeple
+NO SUGGESTION
+The class of spelling mistakes to be corrected is as follows:
+
+Case (upper/lower) errors: "inSIDE" => "inside"
+Repeated letters: "jjoobbb" => "job"
+Incorrect vowels: "weke" => "wake"
+Any combination of the above types of error in a single word should be corrected (e.g. "CUNsperrICY" => "conspiracy").
+
+If there are many possible corrections of an input word, your program can choose one in any way you like. It just has to be an English word that is a spelling correction of the input by the above rules.
+
+Final step: Write a second program that *generates* words with spelling mistakes of the above form, starting with correctly spelled English words. Pipe its output into the first program and verify that there are no occurrences of "NO SUGGESTION" in the output.
+
+
+ANALYSIS:
+The worst case runtime of spellchecking a given word is O((1 + m) * 2), where 'm' is the number of characters in the word, which is faster than the O(n) runtime of scanning the dictionary.
+
+My strategy is to first read the words from the dictionary provided, lowercase them, remove any duplicate letters, and replace any vowels with '!'. This results in a Dictionary<string, List<string>>, where the key is the modified word and the value is the original word. Thus a key like 'sh!p' will map to a list containing 'ship', 'shop', and 'sheep'. These operations all take O(m) time to complete. The adding itself takes slightly longer, as I first check if the key exists, then add the word to the key's value after creating the entry as necessary. 
+
+Overall, BuildDictionary has a runtime of O(log n + n*m), since we need to perform ToLower, RemoveRepeatLetters, and ReplaceVowels 'n' times on strings of length 'm', then run some tests to see if the key already exists, using O(log n) time.
+
+We do the actual testing in two steps. First we run RemoveRepeatLetters, then ReplaceVowels, then Check on the result of those operations. Check simply tries to retrieve the value associated with the key 'input'. If it exists, a random word that could be the correctly spelled version is returned. If the input is 'sheeeep', the output will be either 'ship', 'shop', or 'sheep', as those are all valid corrections given the rules we operate under. If I don't find a valid correction here, I move to the next step: performing ReplaceVowels then RemoveRepeatLetters on the original input, then running Check again. This is done to catch cases like 'peepple' where 'ee' is not actually a repeat, but a misspelling of 'eo'.
+
+The runtime of these operations is O(m), where 'm' is the length of the input, for ToLower, RemoveRepeatLetters, and ReplaceVowels, and O(1) for Check, since Dictionary is implemented as a hash table, where retrieval operations are very fast. The overall runtime of our spellchecking operations is O((1 + m)*2), much faster than O(n).
+
+(This time is not counting the preparation time for the dictionary, as that only happens on startup, and not during the actual spellchecking sections)
+
+
+TEST OUTPUT:
+C:\Users\sbell\Source\Spellcheck\SpellcheckGenerator\bin\Debug>SpellcheckGenerator.exe
+C:\Users\sbell\Source\Spellcheck\Spellcheck\bin\Debug>Spellcheck.exe US.dic < words.txt
+> honk
+> hank
+> hank
+> stoat
+> stat
+> stat
+> phantasm
+> phantasm
+> phantasm
+> hipper
+> hopper
+> hepar
+> fireball
+> fireball
+> fireball
